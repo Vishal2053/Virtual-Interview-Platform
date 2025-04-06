@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interview Simulator</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h1 class="h3 mb-0">AI Interview Simulator</h1>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-users">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                        </div>
+
+                        {% if error %}
+                        <div class="alert alert-danger" role="alert">
+                            {{ error }}
+                        </div>
+                        {% endif %}
+
+                        <p class="text-center mb-4">Prepare for your next interview with our AI-powered simulation. Get personalized questions and immediate feedback.</p>
+
+                        <form action="{{ url_for('setup_interview') }}" method="post">
+                            <div class="mb-3">
+                                <label for="field" class="form-label">Field/Domain</label>
+                                <input type="text" class="form-control" id="field" name="field" placeholder="e.g., Data Science, Software Engineering, Marketing" required>
+                                <div class="form-text">Enter the industry or field you're interviewing for</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="position" class="form-label">Position/Role</label>
+                                <input type="text" class="form-control" id="position" name="position" placeholder="e.g., Data Analyst, Backend Developer, Marketing Manager" required>
+                                <div class="form-text">Enter the specific job title or role</div>
+                            </div>
+
+                            <div class="d-grid gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary">Start Interview</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer text-muted">
+                        <p class="mb-0"><small>Prepare with confidence: Our AI will generate personalized interview questions based on your field and role.</small></p>
+                    </div>
+                </div>
+
+                <div class="card mt-4 shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h2 class="h5 mb-0">How It Works</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3 mb-md-0">
+                                <div class="text-center mb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit-3">
+                                        <path d="M12 20h9"></path>
+                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="h6 text-center">1. Enter Your Details</h3>
+                                <p class="small text-center">Tell us about your field and position you're applying for.</p>
+                            </div>
+                            <div class="col-md-4 mb-3 mb-md-0">
+                                <div class="text-center mb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic">
+                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                                    </svg>
+                                </div>
+                                <h3 class="h6 text-center">2. Participate in Interview</h3>
+                                <p class="small text-center">Answer questions via your microphone and get real-time feedback.</p>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center mb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
+                                </div>
+                                <h3 class="h6 text-center">3. Review Performance</h3>
+                                <p class="small text-center">Get a detailed analysis of your interview performance and areas for improvement.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="mt-5 mb-4 text-center text-muted">
+            <p><small>AI Interview Simulator &copy; 2023</small></p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

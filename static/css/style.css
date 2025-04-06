@@ -1,0 +1,106 @@
+/* Custom styles for AI Interview Simulator */
+
+/* Circular chart for results page */
+.circular-chart {
+    width: 150px;
+    height: 150px;
+  }
+  
+  .circle-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 3.8;
+  }
+  
+  .circle {
+    fill: none;
+    stroke-width: 3.8;
+    stroke-linecap: round;
+    stroke: var(--bs-success);
+    animation: progress 1s ease-out forwards;
+  }
+  
+  .percentage {
+    fill: #fff;
+    font-size: 0.5em;
+    text-anchor: middle;
+    font-weight: bold;
+  }
+  
+  @keyframes progress {
+    0% {
+      stroke-dasharray: 0 100;
+    }
+  }
+  
+  /* Camera container styling */
+  .camera-container {
+    position: relative;
+    min-height: 240px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 0.25rem;
+    overflow: hidden;
+  }
+  
+  #camera-off-message {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* Question container styling */
+  .question-container {
+    background-color: rgba(13, 110, 253, 0.05);
+    border-color: rgba(13, 110, 253, 0.2) !important;
+  }
+  
+  /* Recording status indicators */
+  #recording-status {
+    font-weight: 500;
+  }
+  
+  #recording-status.recording {
+    color: var(--bs-danger) !important;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  
+  /* Feedback container styling */
+  .feedback-content {
+    background-color: rgba(55, 55, 65, 0.3);
+  }
+  
+  /* Progress bars */
+  .progress {
+    height: 0.6rem;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .progress-bar {
+    background-color: var(--bs-primary);
+    transition: width 0.6s ease;
+  }
+  
+  /* Interview accordion */
+  .accordion-button:not(.collapsed) {
+    background-color: rgba(13, 110, 253, 0.1);
+    color: var(--bs-light);
+  }
+  
+  .accordion-button:focus {
+    box-shadow: none;
+    border-color: rgba(0, 0, 0, 0.125);
+  }

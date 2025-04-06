@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interview - Results</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-4 mb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h1 class="h3 mb-0">Interview Complete - Performance Summary</h1>
+                    </div>
+                    <div class="card-body">
+                        <!-- Field/Position Info -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center mb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-briefcase me-2">
+                                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                    </svg>
+                                    <span class="text-muted">Field:</span>
+                                </div>
+                                <p class="ms-4"><strong>{{ field }}</strong></p>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center mb-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user me-2">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    <span class="text-muted">Position:</span>
+                                </div>
+                                <p class="ms-4"><strong>{{ position }}</strong></p>
+                            </div>
+                        </div>
+                        
+                        <!-- Performance Overview Card -->
+                        <div class="card mb-4 bg-dark">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-4 text-center mb-3 mb-md-0">
+                                        <div class="position-relative d-inline-block">
+                                            <svg viewBox="0 0 36 36" class="circular-chart">
+                                                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                                <path class="circle" stroke-dasharray="{{ summary.performance_rating }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                                <text x="18" y="20.35" class="percentage">{{ summary.performance_rating }}%</text>
+                                            </svg>
+                                        </div>
+                                        <h4 class="h5 mt-2">Overall Score</h4>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <h3 class="h5 text-primary mb-3">Performance Assessment:</h3>
+                                        <p>{{ summary.overall_assessment }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Strengths and Improvements Cards -->
+                        <!-- ... rest of the results template ... -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
