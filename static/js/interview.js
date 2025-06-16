@@ -1,4 +1,4 @@
-// Updated Interview page functionality with working camera, recording, and submit
+// interview.js - FINAL FIXED VERSION
 
 // DOM elements
 const startRecordingBtn = document.getElementById('start-recording');
@@ -18,19 +18,17 @@ const overallScoreEl = document.getElementById('overall-score');
 const feedbackTextEl = document.getElementById('feedback-text');
 const encouragementTextEl = document.getElementById('encouragement-text');
 
-// State
 let isRecording = false;
 let mediaRecorder = null;
 let audioChunks = [];
+let stream = null;
 let webcamStream = null;
-let recognitionActive = false;
-let recognition = null;
 let loadingModal = null;
+let audioBlob = null;
+let transcript = '';
 
-// Read the question aloud automatically when page loads
 speakQuestion();
 
-// Event listeners
 if (startRecordingBtn) startRecordingBtn.addEventListener('click', startRecording);
 if (stopRecordingBtn) stopRecordingBtn.addEventListener('click', stopRecording);
 if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
@@ -38,53 +36,123 @@ if (editAnswerBtn) editAnswerBtn.addEventListener('click', makeAnswerEditable);
 if (speakQuestionBtn) speakQuestionBtn.addEventListener('click', speakQuestion);
 if (toggleWebcamBtn) toggleWebcamBtn.addEventListener('click', toggleWebcam);
 
-// Initialize the loading modal if Bootstrap is available
 if (typeof bootstrap !== 'undefined') {
-  loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+  loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'), {
+    backdrop: 'static',
+    keyboard: false
+  });
 }
 
 async function startRecording() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert("Your browser does not support audio recording.");
-    return;
-  }
-
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream);
     audioChunks = [];
+    transcript = '';
+    answerText.value = 'Recording...';
 
-    mediaRecorder.ondataavailable = event => {
-      if (event.data.size > 0) audioChunks.push(event.data);
-    };
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-    mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audio.controls = true;
-      answerText.innerHTML = '';
-      answerText.appendChild(audio);
+    mediaRecorder.onstop = async () => {
+      audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+
+      try {
+        loadingModal?.show();
+        const res = await fetch('/transcribe', { method: 'POST', body: formData });
+        const result = await res.json();
+        transcript = result.transcript || 'No transcription available. Please edit or retry.';
+      } catch (err) {
+        showError(`Transcription failed: ${err.message}`);
+        transcript = 'Transcription failed. Please type your answer.';
+      } finally {
+        loadingModal?.hide();
+      }
+
+      answerText.value = transcript;
+      recordingStatus.textContent = "Stopped";
+      isRecording = false;
+      stream.getTracks().forEach(track => track.stop());
+      mediaRecorder = null;
+      startRecordingBtn.disabled = false;
+      stopRecordingBtn.disabled = true;
+      submitAnswerBtn.disabled = false;
     };
 
     mediaRecorder.start();
     isRecording = true;
     recordingStatus.textContent = "Recording...";
+    startRecordingBtn.disabled = true;
+    stopRecordingBtn.disabled = false;
+    submitAnswerBtn.disabled = true;
   } catch (err) {
-    console.error("Error accessing microphone:", err);
-    alert("Could not access microphone.");
+    console.error("Microphone error:", err);
+    showError("Microphone access denied.");
   }
 }
 
 function stopRecording() {
-  if (mediaRecorder && isRecording) {
+  if (mediaRecorder && isRecording && mediaRecorder.state === 'recording') {
     mediaRecorder.stop();
-    isRecording = false;
-    recordingStatus.textContent = "Stopped";
+    recordingStatus.textContent = "Stopping...";
+    stopRecordingBtn.disabled = true;
   }
 }
 
-async function toggleWebcam() {
+function makeAnswerEditable() {
+  answerText.removeAttribute('readonly');
+  answerText.focus();
+  answerText.addEventListener('input', () => {
+    transcript = answerText.value;
+  });
+}
+
+async function submitAnswer() {
+  const finalAnswer = answerText.value || transcript;
+  if (!finalAnswer.trim() || finalAnswer.includes('Transcription failed')) {
+    showError("Please record or type your answer.");
+    return;
+  }
+
+  try {
+    loadingModal?.show();
+
+    const response = await fetch('/submit-answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answer: finalAnswer })
+    });
+
+    const result = await response.json();
+    loadingModal?.hide();
+
+    if (result.error) {
+      showError(`Submission failed: ${result.error}`);
+      return;
+    }
+
+    overallScoreEl.textContent = `${result.evaluation.overall_score * 10}%`;
+    feedbackTextEl.textContent = result.evaluation.feedback;
+    encouragementTextEl.textContent = result.evaluation.encouragement;
+    feedbackContainer.style.display = 'block';
+
+    // 🔁 Automatically redirect to next question after short delay
+    setTimeout(() => {
+      if (result.is_complete) {
+        window.location.href = '/results';
+      } else {
+        window.location.href = `/interview?t=${Date.now()}`;
+      }
+    }, 2000); // Wait 2s to show feedback
+
+  } catch (err) {
+    loadingModal?.hide();
+    showError(`Failed to submit answer: ${err.message}`);
+  }
+}
+
+function toggleWebcam() {
   if (webcamStream) {
     webcamStream.getTracks().forEach(track => track.stop());
     webcamVideo.srcObject = null;
@@ -92,36 +160,27 @@ async function toggleWebcam() {
     webcamVideo.style.display = 'none';
     cameraOffMessage.style.display = 'block';
   } else {
-    try {
-      webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      webcamVideo.srcObject = webcamStream;
-      await webcamVideo.play();
+    navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
+      webcamStream = s;
+      webcamVideo.srcObject = s;
+      webcamVideo.play();
       webcamVideo.style.display = 'block';
       cameraOffMessage.style.display = 'none';
-    } catch (error) {
-      console.error('Error accessing webcam:', error);
-      alert('Unable to access the webcam.');
-    }
-  }
-}
-
-function speakQuestion() {
-  if (questionText && questionText.textContent) {
-    speakText(questionText.textContent).catch(err => {
-      console.error("Failed to speak question:", err);
+    }).catch(err => {
+      showError("Unable to access webcam. Check permissions.");
     });
   }
 }
 
-function submitAnswer() {
-  const response = answerText.textContent || "";
-  console.log("Submitted answer:", response);
-  alert("Answer submitted successfully.");
-}
-
-function makeAnswerEditable() {
-  if (answerText) {
-    answerText.contentEditable = true;
-    answerText.focus();
+function speakQuestion() {
+  if (questionText?.textContent) {
+    speakText(questionText.textContent).catch(() => {
+      fetch('/get-speech').then(res => res.json()).then(data => {
+        if (data.audio) {
+          ttsAudio.src = `data:audio/mpeg;base64,${data.audio}`;
+          ttsAudio.play();
+        }
+      });
+    });
   }
 }

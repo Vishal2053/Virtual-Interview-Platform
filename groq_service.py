@@ -4,18 +4,20 @@ from typing import List, Dict, Any
 import requests
 from requests.exceptions import RequestException
 from dotenv import load_dotenv
+import json
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+from groq import Groq
 
 # Load environment variables from .env file
 load_dotenv()
 
-
 # Groq API configuration
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"  # Update this if needed
-GROQ_MODEL = "llama-3.3-70b-versatile"  # Default model, can be changed to mixtral or other available models
+GROQ_API_KEY = "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"  # Update this if needed
+GROQ_MODEL = "llama-3.3-70b-versatile"  # Default model
+client = Groq(api_key=GROQ_API_KEY)
 
 def check_api_key() -> None:
     """Check if the Groq API key is configured."""
@@ -31,30 +33,23 @@ def call_groq_api(messages: List[Dict[str, str]], temperature: float = 0.7) -> D
         temperature: Sampling temperature (0-1)
         
     Returns:
-        Response from the Groq API
+        Parsed JSON response from the Groq API
     """
     check_api_key()
     
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    data = {
-        "model": GROQ_MODEL,
-        "messages": messages,
-        "temperature": temperature
-    }
-    
     try:
-        response = requests.post(GROQ_API_URL, headers=headers, json=data)
-        response.raise_for_status()
-        return response.json()
-    except RequestException as e:
-        logger.error(f"Error calling Groq API: {str(e)}")
-        if hasattr(e, 'response') and e.response:
-            logger.error(f"Response: {e.response.text}")
-        raise Exception(f"Failed to call Groq API: {str(e)}")
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            response_format={"type": "json_object"},
+            temperature=temperature
+        )
+        # Parse the JSON string returned in the content
+        content = response.choices[0].message.content
+        return json.loads(content)  # Parse and return the JSON object
+    except Exception as e:
+        logger.error(f"Error in Groq API call: {str(e)}")
+        raise
 
 def generate_interview_questions(field: str, position: str) -> List[str]:
     """
@@ -75,23 +70,21 @@ def generate_interview_questions(field: str, position: str) -> List[str]:
     Focus on both technical and behavioral questions that would effectively evaluate a candidate.
     The questions should be challenging but fair, and cover key skills and knowledge areas for this role.
     
-    Format the output as a plain list of questions, one per line, with no numbering or additional text.
+    Return the response in JSON format with a key 'questions' containing an array of questions.
+    Example: {{"questions": ["question1", "question2", ...]}}
     """
     
     messages = [
-        {"role": "system", "content": "You are an AI assistant that generates professional interview questions."},
+        {"role": "system", "content": "You are an AI assistant that generates professional interview questions in JSON format."},
         {"role": "user", "content": prompt}
     ]
     
     try:
         response = call_groq_api(messages, temperature=0.8)
-        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+        questions = response.get("questions", [])
         
-        # Process the content to get a clean list of questions
-        questions = [q.strip() for q in content.strip().split('\n') if q.strip()]
-        
-        # Filter out any non-question lines
-        questions = [q for q in questions if q.endswith('?')]
+        # Filter out any non-question lines and ensure questions end with '?'
+        questions = [q.strip() for q in questions if q.strip().endswith('?')]
         
         # Ensure we have at least 5 questions
         if len(questions) < 5:
@@ -134,7 +127,7 @@ def evaluate_answer(field: str, position: str, question: str, answer: str) -> Di
     - Brief feedback (2-3 sentences) with constructive criticism
     - A short, encouraging comment to motivate the candidate
     
-    Format your response as a JSON object with the following keys:
+    Return the response in JSON format with the following keys:
     - relevance_score
     - technical_score
     - clarity_score
@@ -144,54 +137,24 @@ def evaluate_answer(field: str, position: str, question: str, answer: str) -> Di
     """
     
     messages = [
-        {"role": "system", "content": "You are an AI assistant that evaluates interview answers."},
+        {"role": "system", "content": "You are an AI assistant that evaluates interview answers and returns results in JSON format."},
         {"role": "user", "content": prompt}
     ]
     
     try:
-        response = call_groq_api(messages, temperature=0.7)
-        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+        evaluation = call_groq_api(messages, temperature=0.7)
         
-        # Try to parse the response as JSON
-        try:
-            import json
-            evaluation = json.loads(content)
-            
-            # Ensure all required fields are present
-            required_fields = [
-                'relevance_score', 'technical_score', 'clarity_score', 
-                'overall_score', 'feedback', 'encouragement'
-            ]
-            
-            for field in required_fields:
-                if field not in evaluation:
-                    evaluation[field] = "Not provided" if field in ['feedback', 'encouragement'] else 5
-                    
-            return evaluation
-        except json.JSONDecodeError:
-            # If JSON parsing fails, create a structured response manually
-            logger.warning("Failed to parse JSON from Groq response, creating structured response manually")
-            
-            # Extract scores using simple pattern matching (fallback)
-            import re
-            
-            relevance = re.search(r'relevance.*?(\d+)', content, re.IGNORECASE)
-            technical = re.search(r'technical.*?(\d+)', content, re.IGNORECASE)
-            clarity = re.search(r'clarity.*?(\d+)', content, re.IGNORECASE)
-            overall = re.search(r'overall.*?(\d+)', content, re.IGNORECASE)
-            
-            # Extract feedback and encouragement (best effort)
-            feedback_match = re.search(r'feedback[:\s]+(.*?)(?=encouragement|\Z)', content, re.IGNORECASE | re.DOTALL)
-            encouragement_match = re.search(r'encouragement[:\s]+(.*?)(?=\Z)', content, re.IGNORECASE | re.DOTALL)
-            
-            return {
-                'relevance_score': int(relevance.group(1)) if relevance else 5,
-                'technical_score': int(technical.group(1)) if technical else 5,
-                'clarity_score': int(clarity.group(1)) if clarity else 5,
-                'overall_score': int(overall.group(1)) if overall else 5,
-                'feedback': feedback_match.group(1).strip() if feedback_match else "Your answer addressed key points.",
-                'encouragement': encouragement_match.group(1).strip() if encouragement_match else "Good effort! Let's continue with the next question."
-            }
+        # Ensure all required fields are present
+        required_fields = [
+            'relevance_score', 'technical_score', 'clarity_score', 
+            'overall_score', 'feedback', 'encouragement'
+        ]
+        
+        for field in required_fields:
+            if field not in evaluation:
+                evaluation[field] = "Not provided" if field in ['feedback', 'encouragement'] else 5
+                
+        return evaluation
     except Exception as e:
         logger.error(f"Error evaluating answer: {str(e)}")
         # Return default evaluation to avoid breaking the interview flow
@@ -248,7 +211,7 @@ def generate_performance_summary(field: str, position: str, questions: List[str]
     4. Recommendations for further preparation (2-3 specific recommendations)
     5. A rating out of 100 that reflects overall interview performance
     
-    Format your response as a JSON object with the following keys:
+    Return the response in JSON format with the following keys:
     - overall_assessment
     - strengths (array)
     - improvement_areas (array)
@@ -257,47 +220,29 @@ def generate_performance_summary(field: str, position: str, questions: List[str]
     """
     
     messages = [
-        {"role": "system", "content": "You are an AI assistant that analyzes interview performance."},
+        {"role": "system", "content": "You are an AI assistant that analyzes interview performance and returns results in JSON format."},
         {"role": "user", "content": prompt}
     ]
     
     try:
-        response = call_groq_api(messages, temperature=0.7)
-        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+        summary = call_groq_api(messages, temperature=0.7)
         
-        # Try to parse the response as JSON
-        try:
-            import json
-            summary = json.loads(content)
-            
-            # Ensure all required fields are present
-            required_fields = [
-                'overall_assessment', 'strengths', 'improvement_areas', 
-                'recommendations', 'performance_rating'
-            ]
-            
-            for field in required_fields:
-                if field not in summary:
-                    if field in ['strengths', 'improvement_areas', 'recommendations']:
-                        summary[field] = ["Not provided"]
-                    elif field == 'performance_rating':
-                        summary[field] = 70  # Default score
-                    else:
-                        summary[field] = "Not provided"
-                        
-            return summary
-        except json.JSONDecodeError:
-            # If JSON parsing fails, extract information manually
-            logger.warning("Failed to parse JSON from Groq response, creating structured response manually")
-            
-            # Create a basic summary with default values
-            return {
-                'overall_assessment': "The interview showed both strengths and areas for improvement. The candidate demonstrated knowledge in some areas but could benefit from additional preparation in others.",
-                'strengths': ["Communication skills", "Technical knowledge"],
-                'improvement_areas': ["More specific examples", "More structured responses"],
-                'recommendations': ["Practice more mock interviews", "Study the technical fundamentals"],
-                'performance_rating': 70
-            }
+        # Ensure all required fields are present
+        required_fields = [
+            'overall_assessment', 'strengths', 'improvement_areas', 
+            'recommendations', 'performance_rating'
+        ]
+        
+        for field in required_fields:
+            if field not in summary:
+                if field in ['strengths', 'improvement_areas', 'recommendations']:
+                    summary[field] = ["Not provided"]
+                elif field == 'performance_rating':
+                    summary[field] = 70  # Default score
+                else:
+                    summary[field] = "Not provided"
+                    
+        return summary
     except Exception as e:
         logger.error(f"Error generating performance summary: {str(e)}")
         # Return default summary to avoid breaking the application flow

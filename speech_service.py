@@ -1,79 +1,63 @@
+# speech_service.py
 import os
 import logging
 import base64
 import requests
-import json
+import io
+import soundfile as sf
+import speech_recognition as sr
 from typing import Optional
-
 from dotenv import load_dotenv
+from pydub import AudioSegment
+import io
 load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+from gtts import gTTS
+import base64
+import io
 
-# ElevenLabs API configuration
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech"
-ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Default voice ID (Rachel)
-
-def text_to_speech(text: str) -> Optional[str]:
-    """
-    Convert text to speech using ElevenLabs API.
-    
-    Args:
-        text: The text to convert to speech
-        
-    Returns:
-        Base64 encoded audio data, or None if the conversion fails
-    """
-    logger.debug(f"Converting text to speech: {text[:50]}...")
-    
-    # Check if ElevenLabs API key is configured
-    if not ELEVENLABS_API_KEY:
-        logger.warning("ElevenLabs API key is missing. Using browser's built-in TTS.")
-        return None
-    
-    headers = {
-        "Accept": "audio/mpeg",
-        "Content-Type": "application/json",
-        "xi-api-key": ELEVENLABS_API_KEY
-    }
-    
-    data = {
-        "text": text,
-        "model_id": "eleven_monolingual_v1",
-        "voice_settings": {
-            "stability": 0.75,
-            "similarity_boost": 0.75
-        }
-    }
-    
+def text_to_speech(text: str) -> str:
     try:
-        response = requests.post(
-            f"{ELEVENLABS_API_URL}/{ELEVENLABS_VOICE_ID}",
-            headers=headers,
-            json=data
-        )
-        
-        if response.status_code == 200:
-            # Convert audio binary data to base64 for embedding in HTML
-            audio_data = base64.b64encode(response.content).decode('utf-8')
-            return audio_data
-        else:
-            logger.error(f"ElevenLabs API error: {response.status_code} - {response.text}")
-            return None
+        tts = gTTS(text=text, lang='en')
+        audio_io = io.BytesIO()
+        tts.write_to_fp(audio_io)
+        audio_io.seek(0)
+        audio_base64 = base64.b64encode(audio_io.read()).decode("utf-8")
+        return audio_base64
     except Exception as e:
-        logger.error(f"Error using ElevenLabs API: {str(e)}")
-        return None
+        logger.error(f"gTTS Error: {str(e)}")
+        return ""
 
-def fallback_tts(text: str) -> None:
+
+
+def transcribe_audio(audio_file) -> Optional[str]:
     """
-    Note: This is a placeholder for any server-side fallback TTS implementation.
-    The actual implementation uses the browser's SpeechSynthesis API.
-    
-    Args:
-        text: The text to convert to speech
+    Transcribe WebM audio using Google Speech Recognition.
     """
-    logger.debug("Using fallback TTS method")
-    return None
+    logger.debug("Transcribing audio with Google Speech Recognition...")
+
+    try:
+        # Read uploaded WebM file and convert to WAV using pydub
+        audio_bytes = audio_file.read()
+        webm_audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format="webm")
+
+        # Export to WAV format in memory
+        wav_io = io.BytesIO()
+        webm_audio.export(wav_io, format="wav")
+        wav_io.seek(0)
+
+        # Use SpeechRecognition with converted WAV
+        recognizer = sr.Recognizer()
+        with sr.AudioFile(wav_io) as source:
+            audio = recognizer.record(source)
+
+        transcript = recognizer.recognize_google(audio, language='en-US')
+        logger.debug(f"Transcription successful: {transcript}")
+        return transcript
+
+    except Exception as e:
+        logger.error(f"Error transcribing audio: {str(e)}")
+        return None
