@@ -13,9 +13,8 @@ from groq import Groq
 
 # Load environment variables from .env file
 load_dotenv()
-
 # Groq API configuration
-GROQ_API_KEY = "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"  # Update this if needed
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # Update this if needed
 GROQ_MODEL = "llama-3.3-70b-versatile"  # Default model
 client = Groq(api_key=GROQ_API_KEY)
 
