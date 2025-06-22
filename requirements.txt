@@ -5,4 +5,4 @@ gtts
 SpeechRecognition
 pydub
 soundfile
-groqtesxt
+groq
